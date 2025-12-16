@@ -1,9 +1,9 @@
 ; 
 ; ADD INSTRUCTION TESTING 
 ;    
-START: .ORIG x4000
+START: .ORIG x4000   ; PC = 0 / x4000
     ADD R0, R1, R7 
-    ADD R3, R4, #7 ; test comment
+    ADD R3, R4, #7   ; test comment
     ADD R3, R4, #-16 ; test comment
 
 ; 
@@ -20,11 +20,27 @@ START: .ORIG x4000
     JMP R1 
     RET
 
-    ; JSR PUSH
+; 
+; JSR/JSRR INSTRUCTION TESTING 
+;    
+    JSR SAVE_RET    ; OFFSET from start = 8 ... INC PC = 9
+    JSR START       ; PC = 9 
+    JSRR R0 
 
-PUSH: 
-    RET
+; 
+; LD INSTRUCTION TESTING 
+;    
+    LD R7, SAVE_RET
 
+; 
+; LDI INSTRUCTION TESTING 
+;    
+    LDI R7, SAVE_RET
+
+; 
+; LEA INSTRUCTION TESTING 
+;    
+    LEA R7, SAVE_RET
 
 ; 
 ; LDR INSTRUCTION TESTING 
@@ -42,6 +58,16 @@ PUSH:
     RTI
 
 ; 
+; ST INSTRUCTION TESTING 
+;    
+    ST R7, SAVE_RET
+
+; 
+; STI INSTRUCTION TESTING 
+;    
+    STI R7, SAVE_RET
+
+; 
 ; STR INSTRUCTION TESTING 
 ;    
     STR R4, R2, #-7
@@ -51,5 +77,5 @@ PUSH:
 ;    
     TRAP x23 ; IN
 
-SAVE_RET: .FILL x0000
-NEW_LINE: .FILL x000A
+SAVE_RET: .FILL x0000   ; 17
+NEW_LINE: .FILL x000A   ; 18 
