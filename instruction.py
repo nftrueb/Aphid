@@ -41,6 +41,9 @@ opcode_str_to_int = {
     'directive': 13
 }
 
+def int_to_16_bit(value: int): 
+    return bytearray([(value >> 8) & 0xFF, value & 0xFF])
+
 HEX = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F']
 def int_to_hex_str(value, bits=4): 
     if value <= 15: 
@@ -71,8 +74,11 @@ class Instruction:
     def __str__(self): 
         return f'{opcode_int_to_str[self.opcode]}'
     
+    def encode(self): 
+        raise NotImplementedError
+    
 @dataclass
-class OrigInstruction: 
+class OrigInstruction(Instruction): 
     opcode: int 
     addr: int
 
@@ -81,9 +87,12 @@ class OrigInstruction:
     
     def __repr__(self): 
         return f'OrigInstruction(opcode={opcode_int_to_str[self.opcode]}, addr={self.addr:#06x})'
-    
+
+    def encode(self): 
+        return int_to_16_bit(self.addr)
+
 @dataclass
-class FillInstruction: 
+class FillInstruction(Instruction): 
     opcode: int 
     value: int
 
@@ -94,14 +103,11 @@ class FillInstruction:
         return f'FillInstruction(opcode={opcode_int_to_str[self.opcode]}, value={self.value:#06x})'
     
 @dataclass
-class RtiInstruction: 
+class RtiInstruction(Instruction): 
     opcode: int 
 
     def __str__(self): 
         return f'{opcode_int_to_str[self.opcode]}'
-    
-    def encode(self): 
-        return f'{int_to_hex_str(self.opcode)}000'
     
 @dataclass
 class AddInstruction(Instruction): 
@@ -117,6 +123,17 @@ class AddInstruction(Instruction):
         else: 
             s += f' #{self.imm}'
         return s 
+    
+    def encode(self): 
+        first = self.opcode << 4
+        first += self.dr << 1 
+        first += (self.sr1 >> 2) & 0x1
+        if self.sr2 is not None: 
+            second = ((self.sr1 & 0x3) << 6) + self.sr2
+        else: 
+            second = ((self.sr1 & 0x3) << 6) + (1 << 5) + self.imm
+
+        return bytearray([first , second]) 
     
 @dataclass
 class AndInstruction(Instruction): 

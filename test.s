@@ -2,16 +2,16 @@
 ; ADD INSTRUCTION TESTING 
 ;    
 START: .ORIG x4000   ; PC = 0 / x4000
-    ADD R0, R1, R7 
-    ADD R3, R4, #7   ; test comment
-    ADD R3, R4, #-16 ; test comment
+    ADD R0, R1, R7   ; 0001 0000 0100 0111  10 47
+    ADD R3, R4, #7   ; 0001 0111 0010 0111  17 27
+    ; ADD R3, R4, #-16 ; 0001 1111 0011 0000
 
 ; 
 ; AND INSTRUCTION TESTING 
 ;    
     AND R1, R2, R3 
     AND R4, R5, #7 ; test comment
-    AND R6, R7, #-16 ; test comment
+    ; AND R6, R7, #-16 ; test comment
 
 
 ; 

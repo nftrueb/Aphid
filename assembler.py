@@ -74,6 +74,16 @@ class Assembler:
             print(f'{i} - {t.__repr__()}')
         print()
 
+    def encode(self): 
+        output_fn = self.filename[:-2] + '.lc3'
+        with open(output_fn, 'wb') as f: 
+            for instruction in self.instructions:
+                try: 
+                    f.write(instruction.encode())
+                except NotImplementedError: 
+                    pass 
+
+        print(f'Successfully wrote bytes to {output_fn}')
 
     def first_pass(self): 
         lines = self.contents.split('\n')
@@ -156,6 +166,8 @@ class Assembler:
             pass 
         elif tokens[0] == '.external': 
             pass
+        elif tokens[0] == '.stringz': 
+            pass 
 
         # instruction
         elif tokens[0] == 'add': 
@@ -417,7 +429,9 @@ def main():
         usage()
         sys.exit(1)
 
-    Assembler(sys.argv[1]).parse()
+    assembler = Assembler(sys.argv[1])
+    assembler.parse()
+    assembler.encode()
 
     print('Successfully exited Aphid Assember ... ')
 
