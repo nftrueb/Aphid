@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-import sys
+from enum import Enum
 
 opcode_int_to_str = {
     1:  'add',
@@ -11,6 +11,7 @@ opcode_int_to_str = {
     8:  'rti', 
     7:  'str', 
     15: 'trap', 
+    13: 'directive'
 }
 
 opcode_str_to_int = {
@@ -22,7 +23,8 @@ opcode_str_to_int = {
     'not': 9, 
     'rti': 8, 
     'str': 7, 
-    'trap': 15
+    'trap': 15, 
+    'directive': 13
 }
 
 HEX = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F']
@@ -31,16 +33,22 @@ def int_to_hex_str(value, bits=4):
         return HEX[value]
     return int_to_hex_str(value // 16) + HEX[value & 0xF]
 
-def hex_str_to_int(value): 
-    if len(value) == 1: 
-        if '0' <= value <= '9': 
-            return int(value)
+def hex_str_to_int(value: str): 
+    result = 0
+    for i in range(len(value)): 
+        digit = 0 
+        if '0' <= value[i] <= '9': 
+            digit = ord(value[i]) - ord('0')
         
-        if 'A' <= value <= 'F': 
-            return ord(value) - ord('A')
-    
-    return hex_str_to_int(value[0]) * 16 + hex_str_to_int(value[1:])
+        elif 'a' <= value[i] <= 'f': 
+            digit = ord(value[i]) - ord('a')
 
+        else: 
+            print(f'[ ERROR ] Failed to parse hex ... encounted invalid digit: {value[i]}')
+        
+        result *= 16
+        result += digit
+    return result
 
 @dataclass
 class Instruction: 
@@ -48,6 +56,28 @@ class Instruction:
 
     def __str__(self): 
         return f'{opcode_int_to_str[self.opcode]}'
+    
+@dataclass
+class OrigInstruction: 
+    opcode: int 
+    addr: int
+
+    def __str__(self): 
+        return f'{opcode_int_to_str[self.opcode]}'
+    
+    def __repr__(self): 
+        return f'OrigInstruction(opcode={opcode_int_to_str[self.opcode]}, addr={self.addr:#06x})'
+    
+@dataclass
+class FillInstruction: 
+    opcode: int 
+    value: int
+
+    def __str__(self): 
+        return f'{opcode_int_to_str[self.opcode]}'
+    
+    def __repr__(self): 
+        return f'FillInstruction(opcode={opcode_int_to_str[self.opcode]}, value={self.value:#06x})'
     
 @dataclass
 class RtiInstruction: 

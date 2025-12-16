@@ -1,6 +1,7 @@
 ; 
 ; ADD INSTRUCTION TESTING 
 ;    
+START: .ORIG x4000
     ADD R0, R1, R7 
     ADD R3, R4, #7 ; test comment
     ADD R3, R4, #-16 ; test comment
@@ -17,6 +18,11 @@
 ; JMP/RET INSTRUCTION TESTING 
 ;    
     JMP R1 
+    RET
+
+    ; JSR PUSH
+
+PUSH: 
     RET
 
 
@@ -44,3 +50,6 @@
 ; TRAP INSTRUCTION TESTING 
 ;    
     TRAP x23 ; IN
+
+SAVE_RET: .FILL x0000
+NEW_LINE: .FILL x000A

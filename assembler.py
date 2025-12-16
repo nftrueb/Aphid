@@ -3,34 +3,74 @@ import math
 
 from instruction import (
     opcode_str_to_int, hex_str_to_int, Instruction, AddInstruction, AndInstruction, NotInstruction, LdrInstruction, 
-    JmpInstruction, RtiInstruction, StrInstruction, TrapInstruction
+    JmpInstruction, RtiInstruction, StrInstruction, TrapInstruction, OrigInstruction, FillInstruction
 )
 
 class Assembler: 
     def __init__(self, filename): 
         self.filename = filename 
         self.lines = []
+        self.symbol_table = {}
         with open(filename, 'r') as f: 
             self.contents = f.read()
-        self.preprocess_file()
 
-        print(f'[ INFO ] Input file:  {filename}')
-        # print('[ DEBUG ] Parsed Lines: ')
-        # for line in self.lines: 
-        #     print(line)
-        # print()
+        print(f'[ INFO ] Input file: {filename}')
 
-    def preprocess_file(self): 
+    def parse(self): 
+        self.first_pass()
+        self.second_pass()
+
+        print('[ DEBUG ] Parsed Lines: ')
+        for line in self.lines: 
+            print(line)
+        print()
+
+        print('[ DEBUG ] Symbol Table after first pass: ')
+        for k, v in self.symbol_table.items(): 
+            print(k, v)
+        print()
+
+
+    def first_pass(self): 
         lines = self.contents.split('\n')
-        for line in lines: 
+        pc = 0 
+        for idx, line in enumerate(lines): 
+            pc_inc = 1
             processed = line.split(';')[0].lower().strip()
 
-            # do not append if string is empty
-            if processed: 
-                self.lines.append(processed + ' ')
+            # check for label
+            colon_idx = processed.find(':')
+            if colon_idx >= 0: 
+                symbol = processed[:colon_idx]
+                if symbol not in self.symbol_table: 
+                    self.symbol_table[symbol] = pc
+                else: 
+                    print(f'[ ERROR ] Found duplicate label definition during first pass: {symbol}')
+                    sys.exit(3)
 
-    def parse(self):
+                # remove symbol from start of line and strip any leading whitespace 
+                processed = processed[colon_idx+1:].strip()
+
+            # skip any lines that only have whitespace/comments
+            if len(processed) == 0: 
+                continue 
+
+            if processed.startswith('.orig'): 
+                pc_inc = 0 
+
+            if processed.startswith('.end'): 
+                break 
+
+            if processed.startswith('.blkw'): 
+                pc_inc = 1 # add pc with operand
+
+            # push processed line and inc PC if line is a valid instruction
+            self.lines.append(processed + ' ')
+            pc += pc_inc
+
+    def second_pass(self):
         instructions = []
+        pc = 0 
         for line in self.lines:
             tokens = []
             curr_word_start_idx = 0 
@@ -50,7 +90,13 @@ class Assembler:
             # for i, t in enumerate(tokens):
             #     print(f'{i} - {t}')
             # print()
+            if tokens[0] == '.end': 
+                break 
+
             instructions.append(parse_instruction(tokens))
+
+            if len(instructions) == 1 and instructions[0]: 
+                pass
 
         print('[ DEBUG ] Instructions:')
         for i, t in enumerate(instructions):
@@ -91,8 +137,19 @@ def parse_decimal(value):
 def parse_hex(value): 
     return hex_str_to_int(value[1:])
 
-def parse_instruction(tokens) -> Instruction: 
-    if tokens[0] == 'add': 
+def parse_instruction(tokens) -> Instruction:  
+    # directives 
+    if tokens[0] == '.orig': 
+        return parse_orig(tokens)
+    elif tokens[0] == '.fill': 
+        return parse_fill(tokens)
+    elif tokens[0] == '.blkw': 
+        pass 
+    elif tokens[0] == '.external': 
+        pass
+
+    # instruction
+    elif tokens[0] == 'add': 
         return parse_add(tokens)
     elif tokens[0] == 'and': 
         return parse_and(tokens) 
@@ -127,6 +184,25 @@ def parse_instruction(tokens) -> Instruction:
 
     print(f'[ ERROR ] Unknown opcode encountered when parsing tokens: {tokens}')
     sys.exit(2)
+
+def parse_orig(tokens) -> Instruction: 
+    is_decimal = validate_decimal(tokens[1], 16)
+    if not is_decimal and not validate_hex(tokens[1], 16): 
+        print(f'[ ERROR ] OrigInstruction: failed to parse addr operand: {tokens[1]}')
+
+    return OrigInstruction(
+        opcode_str_to_int['directive'], 
+        addr = parse_decimal(tokens[1]) if is_decimal else parse_hex(tokens[1])
+    )
+
+def parse_fill(tokens) -> Instruction: 
+    if not validate_hex(tokens[1], 16): 
+        print(f'[ ERROR ] FillInstruction: failed to parse operand: {tokens[1]}')
+
+    return FillInstruction(
+        opcode_str_to_int['directive'], 
+        value = parse_hex(tokens[1])
+    )
 
 def parse_add(tokens) -> Instruction: 
     if not validate_register(tokens[1]) or not validate_register(tokens[3]):
