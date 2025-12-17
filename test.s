@@ -4,33 +4,42 @@
 START: .ORIG x4000   ; PC = 0 / x4000
     ADD R0, R1, R7   ; 0001 0000 0100 0111  10 47
     ADD R3, R4, #7   ; 0001 0111 0010 0111  17 27
-    ; ADD R3, R4, #-16 ; 0001 1111 0011 0000
+    ADD R3, R4, #-16 ; 0001 1111 0011 0000  17 30
 
 ; 
 ; AND INSTRUCTION TESTING 
 ;    
-    AND R1, R2, R3 
-    AND R4, R5, #7 ; test comment
-    ; AND R6, R7, #-16 ; test comment
+    AND R1, R2, R3      ; 0101 0010 1000 0011 - 52 83
+    AND R4, R5, #7      ; 0101 1001 0110 0111 - 59 67
+    AND R6, R7, #-16    ; 0101 1101 1111 0000 - 5D F0
 
+; 1010 A 
+; 1011 B 
+; 1100 C 
+; 1101 D 
+; 1110 E 
+; 1111 F
 
 ; 
 ; JMP/RET INSTRUCTION TESTING 
 ;    
-    JMP R1 
-    RET
+    JMP R1  ; 1100 0000 0100 0000 - C0 40
+    RET     ; 1100 0001 1100 0000 - C1 C0
 
 ; 
 ; JSR/JSRR INSTRUCTION TESTING 
 ;    
-    JSR SAVE_RET    ; OFFSET from start = 8 ... INC PC = 9
-    JSR START       ; PC = 9 
-    JSRR R0 
+    JSR SAVE_RET    ; OFFSET from start = 8 ... INC PC = 9  0100 1000 0000 0000 - 44 xx
+    JSR START       ; PC = 9                                0100 1111 1111 0110 - 4F F6
+    JSRR R7         ;                                       0100 0001 1100 0000 - 41 C0
+
+
 
 ; 
 ; LD INSTRUCTION TESTING 
 ;    
-    LD R7, SAVE_RET
+    LD R7, SAVE_RET         ; 0010 111x xxxx xxxx - 2E xx
+
 
 ; 
 ; LDI INSTRUCTION TESTING 
@@ -45,17 +54,18 @@ START: .ORIG x4000   ; PC = 0 / x4000
 ; 
 ; LDR INSTRUCTION TESTING 
 ;    
-    LDR R4, R2, #-7
+    LDR R4, R2, #7     ; 0110 1000 1000 0111 - 68 87
+
 
 ; 
 ; NOT INSTRUCTION TESTING 
 ;    
-    NOT R4, R2
+    NOT R4, R2  ; 1001 1000 1011 1111 - 98 BF
 
 ; 
 ; RTI INSTRUCTION TESTING 
 ;    
-    RTI
+    RTI ; 1000 0000 0000 0000 - 0x80 00
 
 ; 
 ; ST INSTRUCTION TESTING 
@@ -75,7 +85,10 @@ START: .ORIG x4000   ; PC = 0 / x4000
 ; 
 ; TRAP INSTRUCTION TESTING 
 ;    
-    TRAP x23 ; IN
+    TRAP x23 ; IN           1111 0000 0010 0011 - F0 23
 
-SAVE_RET: .FILL x0000   ; 17
+SAVE_RET: 
+    .END
+
+SAVE_RET: .FILL xFFFF   ; 17
 NEW_LINE: .FILL x000A   ; 18 

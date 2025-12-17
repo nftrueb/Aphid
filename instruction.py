@@ -67,6 +67,13 @@ def hex_str_to_int(value: str):
         result += digit
     return result
 
+def twos_complement(value, bits): 
+    if value >= 0: 
+        return value 
+    value *= -1
+    mask = (1 << bits) - 1 
+    return mask - value + 1
+
 @dataclass
 class Instruction: 
     opcode: int 
@@ -102,12 +109,18 @@ class FillInstruction(Instruction):
     def __repr__(self): 
         return f'FillInstruction(opcode={opcode_int_to_str[self.opcode]}, value={self.value:#06x})'
     
+    def encode(self): 
+        return int_to_16_bit(self.value)
+    
 @dataclass
 class RtiInstruction(Instruction): 
     opcode: int 
 
     def __str__(self): 
         return f'{opcode_int_to_str[self.opcode]}'
+    
+    def encode(self): 
+        return bytearray([self.opcode << 4, 0x00])
     
 @dataclass
 class AddInstruction(Instruction): 
@@ -131,7 +144,8 @@ class AddInstruction(Instruction):
         if self.sr2 is not None: 
             second = ((self.sr1 & 0x3) << 6) + self.sr2
         else: 
-            second = ((self.sr1 & 0x3) << 6) + (1 << 5) + self.imm
+            imm = twos_complement(self.imm, 5) if self.imm < 0 else self.imm
+            second = ((self.sr1 & 0x3) << 6) + (1 << 5) + imm
 
         return bytearray([first , second]) 
     
@@ -150,11 +164,30 @@ class AndInstruction(Instruction):
             s += f' #{self.imm}'
         return s 
     
+    def encode(self): 
+        first = self.opcode << 4
+        first += self.dr << 1 
+        first += (self.sr1 >> 2) & 0x1
+        if self.sr2 is not None: 
+            second = ((self.sr1 & 0x3) << 6) + self.sr2
+        else: 
+            imm = twos_complement(self.imm, 5) if self.imm < 0 else self.imm
+            second = ((self.sr1 & 0x3) << 6) + (1 << 5) + imm
+
+        return bytearray([first , second]) 
+
 @dataclass
 class JmpInstruction(Instruction): 
     base_reg: int 
     def __str__(self): 
         return f'{opcode_int_to_str[self.opcode]} R{self.base_reg}'
+    
+    def encode(self): 
+        first, second = 0, 0
+        first = self.opcode << 4
+        first += (self.base_reg >> 2) & 0x1
+        second += (self.base_reg & 0x3) << 6
+        return bytearray([first , second])
     
 @dataclass
 class JsrInstruction(Instruction): 
@@ -162,11 +195,26 @@ class JsrInstruction(Instruction):
     def __str__(self): 
         return f'{opcode_int_to_str[self.opcode]} x{self.offset:#x}'
     
+    def encode(self): 
+        offset = twos_complement(self.offset, 11)
+        first = self.opcode << 4
+        first += 1 << 3
+        first += (offset >> 8) & 0x7
+        second = offset & 0xff
+        return bytearray([first , second]) 
+    
 @dataclass
 class JsrrInstruction(Instruction): 
     base_reg: int 
     def __str__(self): 
         return f'{opcode_int_to_str[self.opcode]} R{self.base_reg}'
+    
+    def encode(self):
+        first, second = 0, 0
+        first = self.opcode << 4
+        first += (self.base_reg >> 2) & 0x1
+        second += (self.base_reg & 0x3) << 6
+        return bytearray([first , second])
     
 @dataclass
 class LdInstruction(Instruction): 
@@ -175,6 +223,15 @@ class LdInstruction(Instruction):
     def __str__(self): 
         return f'{opcode_int_to_str[self.opcode]} R{self.dr}, x{self.offset:#x}'
     
+    def encode(self): 
+        first, second = 0, 0
+        offset = twos_complement(self.offset, 9)
+        first = self.opcode << 4
+        first += self.dr << 1
+        first += (offset >> 8) & 0x1
+        second += offset & 0xff
+        return bytearray([first , second]) 
+    
 @dataclass
 class LdiInstruction(Instruction): 
     dr: int
@@ -182,12 +239,30 @@ class LdiInstruction(Instruction):
     def __str__(self): 
         return f'{opcode_int_to_str[self.opcode]} R{self.dr}, x{self.offset:#x}'
     
+    def encode(self): 
+        first, second = 0, 0
+        offset = twos_complement(self.offset, 9)
+        first = self.opcode << 4
+        first += self.dr << 1
+        first += (offset >> 8) & 0x1
+        second += offset & 0xff
+        return bytearray([first , second]) 
+    
 @dataclass
 class LeaInstruction(Instruction): 
     dr: int
     offset: int 
     def __str__(self): 
         return f'{opcode_int_to_str[self.opcode]} R{self.dr}, x{self.offset:#x}'
+    
+    def encode(self): 
+        first, second = 0, 0
+        offset = twos_complement(self.offset, 9)
+        first = self.opcode << 4
+        first += self.dr << 1
+        first += (offset >> 8) & 0x1
+        second += offset & 0xff
+        return bytearray([first , second]) 
    
 @dataclass
 class LdrInstruction(Instruction): 
@@ -198,6 +273,16 @@ class LdrInstruction(Instruction):
     def __str__(self): 
         return f'{opcode_int_to_str[self.opcode]} R{self.dr}, R{self.base_reg}, #{self.offset}'
     
+    def encode(self): 
+        first, second = 0, 0 
+        offset = twos_complement(self.offset, 6)
+        first += self.opcode << 4 
+        first += self.dr << 1 
+        first += (self.base_reg >> 2) & 0x1
+        second += (self.base_reg & 0x3) << 6 
+        second += offset & 0x3F
+        return bytearray([first, second])
+    
 @dataclass
 class NotInstruction(Instruction): 
     dr: int 
@@ -205,6 +290,15 @@ class NotInstruction(Instruction):
 
     def __str__(self): 
         return f'{opcode_int_to_str[self.opcode]} R{self.dr}, R{self.base_reg}'
+    
+    def encode(self): 
+        first, second = 0, 0
+        first += self.opcode << 4 
+        first += self.dr << 1
+        first += (self.sr >> 2) & 0x1
+        second += (self.sr & 0x3) << 6
+        second += 0x3f
+        return bytearray([first, second])
   
 @dataclass
 class StInstruction(Instruction): 
@@ -212,6 +306,15 @@ class StInstruction(Instruction):
     offset: int 
     def __str__(self): 
         return f'{opcode_int_to_str[self.opcode]} R{self.dr}, x{self.offset:#x}'
+    
+    def encode(self): 
+        first, second = 0, 0
+        offset = twos_complement(self.offset, 9)
+        first = self.opcode << 4
+        first += self.dr << 1
+        first += (offset >> 8) & 0x1
+        second += offset & 0xff
+        return bytearray([first , second]) 
 
 @dataclass
 class StiInstruction(Instruction): 
@@ -219,6 +322,15 @@ class StiInstruction(Instruction):
     offset: int 
     def __str__(self): 
         return f'{opcode_int_to_str[self.opcode]} R{self.dr}, x{self.offset:#x}'
+    
+    def encode(self): 
+        first, second = 0, 0
+        offset = twos_complement(self.offset, 9)
+        first = self.opcode << 4
+        first += self.dr << 1
+        first += (offset >> 8) & 0x1
+        second += offset & 0xff
+        return bytearray([first , second]) 
   
 @dataclass
 class StrInstruction(Instruction): 
@@ -229,6 +341,16 @@ class StrInstruction(Instruction):
     def __str__(self): 
         return f'{opcode_int_to_str[self.opcode]} R{self.dr}, R{self.base_reg}, #{self.offset}'
     
+    def encode(self): 
+        first, second = 0, 0 
+        offset = twos_complement(self.offset, 6)
+        first += self.opcode << 4 
+        first += self.dr << 1 
+        first += (self.base_reg >> 2) & 0x1
+        second += (self.base_reg & 0x3) << 6 
+        second += offset & 0x3F
+        return bytearray([first, second])
+    
 @dataclass
 class TrapInstruction(Instruction): 
     vector: int
@@ -238,3 +360,10 @@ class TrapInstruction(Instruction):
 
     def __str__(self): 
         return f'{opcode_int_to_str[self.opcode]} {self.vector:#x}'
+    
+    def encode(self): 
+        first, second = 0, 0 
+        vector = twos_complement(self.vector, 8)
+        first += self.opcode << 4 
+        second += vector & 0xFF
+        return bytearray([first, second])
