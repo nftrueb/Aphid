@@ -5,7 +5,7 @@ from instruction import (
     opcode_str_to_int, hex_str_to_int, Instruction, AddInstruction, AndInstruction, NotInstruction, LdrInstruction, 
     JmpInstruction, RtiInstruction, StrInstruction, TrapInstruction, OrigInstruction, FillInstruction, 
     JsrInstruction, JsrrInstruction, LdInstruction, LdiInstruction, LeaInstruction, 
-    StInstruction, StiInstruction
+    StInstruction, StiInstruction, BrInstruction
 )
 
 def validate_register(value):
@@ -42,7 +42,6 @@ def parse_decimal(value):
 
 def parse_hex(value): 
     return hex_str_to_int(value[1:])
-
 
 class Assembler: 
     def __init__(self, filename): 
@@ -174,8 +173,8 @@ class Assembler:
             return self.parse_add(tokens)
         elif tokens[0] == 'and': 
             return self.parse_and(tokens) 
-        elif tokens[0] == 'br': 
-            pass 
+        elif tokens[0].startswith('br'): 
+            return self.parse_br(tokens) 
         elif tokens[0] in { 'jmp', 'ret' }: 
             return self.parse_jmp_ret(tokens) 
         elif tokens[0] == 'jsr': 
@@ -202,9 +201,47 @@ class Assembler:
             return self.parse_str(tokens) 
         elif tokens[0] == 'trap': 
             return self.parse_trap(tokens) 
+        
 
         print(f'[ ERROR ] Unknown opcode encountered when parsing tokens: {tokens}')
         sys.exit(2)
+
+    def parse_nzp(suffix): 
+        if suffix[0] == 'n': 
+            N = True
+        elif suffix[0] == 'z': 
+            Z = True 
+            if len(suffix) > 1 and suffix[1] == 'p': 
+                P = True
+        elif suffix[0] == 'p': 
+            P = True
+
+    def parse_br(self, tokens) -> Instruction: 
+        nzp_list = [False, False, False]
+        if len(tokens[0]) > 2: 
+            suffix = tokens[0][2:]
+            last_idx = -1
+            for i in range(len(suffix)):
+                encountered_idx = -1
+                match suffix[i]:
+                    case 'n': encountered_idx = 0
+                    case 'z': encountered_idx = 1
+                    case 'p': encountered_idx = 2
+                if encountered_idx <= last_idx: 
+                    print(f'[ ERROR ] BrInstruction: failed to parse nzp: {tokens}')
+                    sys.exit(2)
+                nzp_list[encountered_idx] = True
+
+        if not any(nzp_list): 
+            nzp_list = [ True, True, True ]
+
+        return BrInstruction(
+            opcode=opcode_str_to_int['br'], 
+            n = 1 if nzp_list[0] else 0, 
+            z = 1 if nzp_list[1] else 0, 
+            p = 1 if nzp_list[2] else 0,
+            offset=self.symbol_table[tokens[1]] - (self.pc + 1)
+        )
 
     def parse_orig(self, tokens) -> Instruction: 
         is_decimal = validate_decimal(tokens[1], 16)

@@ -85,6 +85,28 @@ class Instruction:
         raise NotImplementedError
     
 @dataclass
+class BrInstruction(Instruction): 
+    opcode: int 
+    n: int 
+    z: int 
+    p: int 
+    offset: int 
+
+    def __str__(self): 
+        return f'{opcode_int_to_str[self.opcode]}, n={self.n}, z={self.z}, p={self.p}, offset={self.offset}'
+    
+    def encode(self): 
+        first, second = 0, 0 
+        offset = twos_complement(self.offset, 9)
+        first += self.opcode << 4 
+        first += self.n << 3 
+        first += self.z << 2 
+        first += self.p << 1 
+        first += (offset >> 8) & 0x1 
+        second += offset & 0xFF 
+        return bytearray([first, second])
+    
+@dataclass
 class OrigInstruction(Instruction): 
     opcode: int 
     addr: int

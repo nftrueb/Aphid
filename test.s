@@ -33,8 +33,6 @@ START: .ORIG x4000   ; PC = 0 / x4000
     JSR START       ; PC = 9                                0100 1111 1111 0110 - 4F F6
     JSRR R7         ;                                       0100 0001 1100 0000 - 41 C0
 
-
-
 ; 
 ; LD INSTRUCTION TESTING 
 ;    
@@ -87,8 +85,19 @@ START: .ORIG x4000   ; PC = 0 / x4000
 ;    
     TRAP x23 ; IN           1111 0000 0010 0011 - F0 23
 
-SAVE_RET: 
-    .END
+
+; 
+; BR INSTRUCTION TESTING 
+;    
+    BR      SAVE_RET    ; 0000 111x xxxx xxxx 0E xx
+    BRnzp   SAVE_RET    ; 0000 111x xxxx xxxx 0E xx
+    BRn     SAVE_RET    ; 0000 100x xxxx xxxx 08 xx
+    BRnz    SAVE_RET    ; 0000 110x xxxx xxxx 0C xx
+    BRz     SAVE_RET    ; 0000 010x xxxx xxxx 04 xx
+    BRzp    SAVE_RET    ; 0000 011x xxxx xxxx 06 xx
+    BRp     SAVE_RET    ; 0000 001x xxxx xxxx 02 xx
 
 SAVE_RET: .FILL xFFFF   ; 17
 NEW_LINE: .FILL x000A   ; 18 
+
+    .END
